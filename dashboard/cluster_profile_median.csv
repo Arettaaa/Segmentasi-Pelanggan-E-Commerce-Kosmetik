@@ -1,0 +1,5 @@
+cluster,median_view_count,median_cart_count,median_remove_count,median_purchase_count,median_session_count,median_total_spend
+0,1,0,0,0,1,0.0
+1,50,42,28,14,14,58.22
+2,6,7,2,4,2,23.44
+3,11,4,0,0,5,0.0

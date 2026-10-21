@@ -1,0 +1,5 @@
+cluster,customer_count,avg_purchase_events,avg_total_spend,avg_views,avg_cart_events,avg_days_since_last_event,nama_segmen,recommended_action,pct_customers
+0,1375946,0.0,0.01,1.8,0.4,73.75,Pengunjung Kasual,"Promo pembelian pertama, rekomendasi produk populer",83.93
+1,41483,22.03,97.97,89.72,71.36,39.42,Loyal High-Value,"Program loyalitas, penawaran eksklusif, benefit prioritas",2.53
+2,67104,5.52,33.85,9.99,9.44,65.53,Pembeli Reguler,"Cross-sell/upsell, bundling, dorong repeat purchase",4.09
+3,154825,0.01,0.02,18.0,10.46,57.01,Cart Abandoner,"Reminder keranjang, voucher, promo gratis ongkir",9.44

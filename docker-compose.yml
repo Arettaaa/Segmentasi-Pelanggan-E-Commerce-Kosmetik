@@ -1,0 +1,78 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    environment:
+      CLUSTER_NAME: bigdata
+    env_file:
+      - ./hadoop.env
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - namenode:/hadoop/dfs/name
+      - ./data:/input:ro
+    restart: unless-stopped
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    volumes:
+      - datanode:/hadoop/dfs/data
+    depends_on:
+      - namenode
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: bigdata
+      POSTGRES_PASSWORD: bigdata
+      POSTGRES_DB: segmentasi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bigdata -d segmentasi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  spark:
+    image: quay.io/jupyter/pyspark-notebook:spark-3.5.3
+    container_name: spark
+    command: sleep infinity
+    environment:
+      SPARK_LOCAL_IP: spark
+    volumes:
+      - ./work:/home/jovyan/work
+    depends_on:
+      - namenode
+      - datanode
+      - postgres
+    restart: unless-stopped
+
+  dashboard:
+    image: python:3.11-slim
+    container_name: dashboard
+    working_dir: /app
+    command: sh -c "pip install streamlit pandas psycopg2-binary plotly && streamlit run app.py --server.address 0.0.0.0"
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  namenode:
+  datanode:
+  pgdata:
