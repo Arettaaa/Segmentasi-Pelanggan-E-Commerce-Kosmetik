@@ -1,11 +1,30 @@
+import logging
 import os
-from flask import Flask, jsonify, render_template
+import threading
+import time
+from datetime import datetime, timezone
+
 import psycopg2
+from flask import Flask, jsonify, render_template, request
 from psycopg2.extras import RealDictCursor
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("dashboard_web")
+
 app = Flask(__name__)
-PG = dict(host=os.getenv("PG_HOST", "postgres"), port=int(os.getenv("PG_PORT", "5432")),
-          dbname="segmentasi", user="bigdata", password="bigdata")
+app.json.sort_keys = False  # pertahankan urutan kolom dari PostgreSQL
+
+# Kredensial dari environment (lihat docker-compose.yml), default hanya untuk lokal
+PG = dict(
+    host=os.getenv("PG_HOST", "postgres"),
+    port=int(os.getenv("PG_PORT", "5432")),
+    dbname=os.getenv("PG_DB", "segmentasi"),
+    user=os.getenv("PG_USER", "bigdata"),
+    password=os.getenv("PG_PASSWORD", "bigdata"),
+)
+CACHE_TTL = int(os.getenv("CACHE_TTL", "600"))          # detik; hasil analisis bersifat statis
+DATA_PERIOD = os.getenv("DATA_PERIOD", "Okt 2019 – Feb 2020")
+CURRENCY = os.getenv("CURRENCY", "USD")                   # satuan harga dataset Kaggle REES46
 
 PROFILE_SQL = """
 SELECT cluster, COUNT(*) AS customers,
@@ -19,16 +38,12 @@ SELECT cluster, COUNT(*) AS customers,
        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_since_last_event) med_recency
 FROM customer_segments GROUP BY cluster ORDER BY cluster
 """
-SAMPLE_SQL = """
-SELECT cluster, view_count, cart_count, purchase_count, total_spend, days_since_last_event
-FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY cluster ORDER BY random()) rn
-      FROM customer_segments) t WHERE rn <= 1500
-"""
 TABLES = {
     "econ": "SELECT * FROM segment_economics ORDER BY revenue_share DESC",
     "funnel": "SELECT * FROM funnel_customer",
     "funnel_seg": "SELECT * FROM funnel_segment",
     "brand": "SELECT * FROM top_brand_segment ORDER BY cluster, rank",
+    "category": "SELECT * FROM top_category_segment ORDER BY cluster, rank",
     "product": "SELECT * FROM top_product_segment ORDER BY cluster, rank",
     "price": "SELECT * FROM price_range_segment",
     "hour": "SELECT * FROM activity_hour_segment ORDER BY jam",
@@ -43,32 +58,77 @@ TABLES = {
     "seed": "SELECT * FROM seed_wssse ORDER BY seed",
     "corr": "SELECT * FROM feature_correlation",
     "sens": "SELECT * FROM feature_sensitivity",
+    "purity": "SELECT * FROM cluster_purity ORDER BY cluster",
     "bench": "SELECT * FROM pipeline_benchmark",
     "spec": "SELECT * FROM pipeline_spec",
 }
+
+_cache = {"data": None, "ts": 0.0}
+_lock = threading.Lock()
 
 
 def connect():
     try:
         return psycopg2.connect(**PG, connect_timeout=5)
     except psycopg2.OperationalError:
+        if PG["host"] == "localhost":
+            raise
+        log.warning("Gagal konek ke host %s, mencoba localhost", PG["host"])
         return psycopg2.connect(**{**PG, "host": "localhost"}, connect_timeout=5)
 
 
-def fetch(cur, sql, quiet=True):
+def fetch(cur, name, sql, missing, quiet=True):
     try:
         cur.execute(sql)
         rows = [dict(r) for r in cur.fetchall()]
         for r in rows:
             for k, v in r.items():
-                if hasattr(v, "is_finite"):
+                if hasattr(v, "is_finite"):  # Decimal -> float
                     r[k] = float(v)
         return rows
-    except Exception:
+    except Exception as e:
         cur.connection.rollback()
-        if quiet:
-            return []
-        raise
+        log.error("Query '%s' gagal: %s", name, str(e).strip())
+        if not quiet:
+            raise
+        missing.append(name)
+        return []
+
+
+def build_payload():
+    missing = []
+    t0 = time.perf_counter()
+    conn = connect()
+    try:
+        with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            out = {k: fetch(cur, k, s, missing) for k, s in TABLES.items()}
+            out["profile"] = fetch(cur, "profile", PROFILE_SQL, missing, quiet=False)
+    finally:
+        conn.close()
+
+    if not out["econ"]:
+        raise LookupError("Tabel segment_economics kosong. Jalankan analisis_lanjutan.py.")
+
+    peta = {int(r["cluster"]): r["segmen"] for r in out["econ"]}
+    for key in ("profile", "purity"):
+        for r in out[key]:
+            r["cluster"] = int(r["cluster"])
+            r["segmen"] = peta.get(r["cluster"], f"Cluster {r['cluster']}")
+
+    k_final = next((r["nilai"] for r in out["val"] if r["metrik"].startswith("K final")), None)
+    out["meta"] = dict(
+        period=DATA_PERIOD,
+        currency=CURRENCY,
+        k=int(k_final) if k_final else len(out["econ"]),
+        order=[r["segmen"] for r in out["econ"]],
+        updated_at=datetime.now(timezone.utc).isoformat(),
+        cache_ttl=CACHE_TTL,
+        query_ms=round((time.perf_counter() - t0) * 1000),
+        missing=missing,
+    )
+    if missing:
+        log.warning("Tabel belum tersedia: %s", ", ".join(missing))
+    return out
 
 
 @app.route("/")
@@ -78,34 +138,27 @@ def index():
 
 @app.route("/api/data")
 def api_data():
-    try:
-        conn = connect()
-    except Exception as e:
-        return jsonify(error=f"Tidak dapat terhubung ke PostgreSQL: {e}"), 503
-    with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-        out = {k: fetch(cur, s) for k, s in TABLES.items()}
-        out["profile"] = fetch(cur, PROFILE_SQL, quiet=False)
-        out["sample"] = fetch(cur, SAMPLE_SQL)
-    conn.close()
+    force = request.args.get("refresh") == "1"
+    with _lock:
+        fresh = _cache["data"] is not None and time.time() - _cache["ts"] < CACHE_TTL
+        if force or not fresh:
+            try:
+                _cache["data"] = build_payload()
+                _cache["ts"] = time.time()
+            except LookupError as e:
+                return jsonify(error=str(e)), 500
+            except psycopg2.OperationalError as e:
+                log.error("Koneksi PostgreSQL gagal: %s", e)
+                return jsonify(error=f"Tidak dapat terhubung ke PostgreSQL ({PG['host']}:{PG['port']})."), 503
+            except Exception as e:
+                log.exception("Gagal membangun data dashboard")
+                return jsonify(error=f"Gagal memuat data: {e}"), 500
+        return jsonify(_cache["data"])
 
-    if not out["econ"]:
-        return jsonify(error="Tabel segment_economics kosong. Jalankan analisis_lanjutan.py."), 500
 
-    peta = {int(r["cluster"]): r["segmen"] for r in out["econ"]}
-    for key in ("profile", "sample"):
-        for r in out[key]:
-            r["cluster"] = int(r["cluster"])
-            r["segmen"] = peta.get(r["cluster"], f"Cluster {r['cluster']}")
-
-    total = sum(r["customers"] for r in out["econ"])
-    out["kpi"] = dict(
-        total=total,
-        buyers=sum(r["buyers"] for r in out["econ"]),
-        revenue=sum(r["segment_revenue"] for r in out["econ"]),
-        k=len(out["econ"]),
-        order=[r["segmen"] for r in out["econ"]],
-    )
-    return jsonify(out)
+@app.route("/health")
+def health():
+    return jsonify(status="ok")
 
 
 if __name__ == "__main__":
