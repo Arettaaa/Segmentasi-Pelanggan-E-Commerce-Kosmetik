@@ -1,5 +1,6 @@
 import pandas as pd
 from pyspark.sql import SparkSession, functions as F, Window
+from penamaan import beri_nama
 
 spark = (SparkSession.builder.appName("analisis_marketing")
          .config("spark.sql.shuffle.partitions", "8")
@@ -16,7 +17,6 @@ PROPS = {"user": "bigdata", "password": "bigdata",
 TZ_OFFSET = 3           # dataset UTC; toko diasumsikan UTC+3 (Moskow)
 CHURN_DAYS = 60         # ambang "berisiko churn"
 TOP_N = 5
-NAMA = ["Pembeli Bernilai Tinggi", "Pembeli Menengah", "Browser Aktif", "Pengunjung Kasual"]
 
 
 def to_pg(df, table):
@@ -31,17 +31,7 @@ lab = spark.read.parquet(SEGMENTS).select("user_id", "cluster")
 seg = feat.join(lab, "user_id").cache()
 print("Pelanggan:", f"{seg.count():,}")
 
-k = seg.groupBy("cluster").agg(
-    F.count("*").alias("customers"),
-    F.avg("total_spend").alias("avg_spend"),
-    F.avg("cart_count").alias("avg_carts"),
-    F.avg("purchase_count").alias("avg_purchases"),
-).toPandas()
-u = k.sort_values("avg_spend", ascending=False)
-peta = {int(u.iloc[0]["cluster"]): NAMA[0], int(u.iloc[1]["cluster"]): NAMA[1]}
-s2 = u.iloc[2:].sort_values("avg_carts", ascending=False)
-peta[int(s2.iloc[0]["cluster"])], peta[int(s2.iloc[1]["cluster"])] = NAMA[2], NAMA[3]
-print("Peta segmen:", peta)
+peta = beri_nama(seg)   # penamaan berbasis data, sama dengan analisis_lanjutan.py
 rec = spark.createDataFrame([(c, n) for c, n in peta.items()], ["cluster", "segmen"])
 
 ev = (spark.read.parquet(EVENTS)

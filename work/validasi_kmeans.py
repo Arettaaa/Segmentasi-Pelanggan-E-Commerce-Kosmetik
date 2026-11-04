@@ -17,10 +17,12 @@ PROPS = {"user": "bigdata", "password": "bigdata",
          "driver": "org.postgresql.Driver", "batchsize": "10000"}
 
 # sama persis dengan kmeans_pipeline.py
+# 6 fitur perilaku & belanja (sama dengan notebook Colab). Recency TIDAK masuk K-Means;
+# dipakai terpisah untuk profil dan analisis risiko tidak aktif.
 FEATS = ["view_count", "cart_count", "remove_count", "purchase_count",
-         "total_spend", "session_count", "days_since_last_event"]
-K_FINAL = 4
-MAX_ITER, TOL = 20, 0.01
+         "session_count", "total_spend"]
+K_FINAL = 3
+MAX_ITER, TOL = 30, 1e-4   # sama dengan Colab (pemilihan K)
 SEEDS = [42, 1, 2, 3, 4, 5]
 
 

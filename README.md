@@ -44,7 +44,14 @@ E-Commerce Events History in Cosmetics Shop dari Kaggle, dengan data periode Okt
 
 6\. Menampilkan hasil melalui dashboard Streamlit.
 
+## Dashboard Web (`dashboard_web`, port 8502)
+Laporan interaktif gaya Power BI/Looker (Flask + Chart.js) yang membaca tabel hasil analisis di PostgreSQL.
 
+- 6 halaman: Ringkasan, Profil Segmen, Aktivitas, Risiko & Peluang, Evaluasi Model, Pipeline
+- Slicer segmen + cross-filter (klik bar/baris; Ctrl/Cmd = multi-pilih)
+- Tiap visual: lihat sebagai tabel, export CSV, mode fokus
+- Cache data (`CACHE_TTL`, default 600 detik); tombol Refresh memaksa baca ulang
+- Konfigurasi via env: `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, `PG_PASSWORD`, `CACHE_TTL`, `DATA_PERIOD`, `CURRENCY`
 
-
+Menjalankan: `docker compose up -d --build dashboard_web` lalu buka http://localhost:8502
 

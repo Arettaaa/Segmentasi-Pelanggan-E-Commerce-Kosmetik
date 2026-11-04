@@ -4,6 +4,7 @@ from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.stat import Correlation
 from pyspark.ml.clustering import KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
+from penamaan import beri_nama
 
 spark = (SparkSession.builder.appName("analisis_lanjutan")
          .config("spark.sql.shuffle.partitions", "8")
@@ -17,10 +18,11 @@ JDBC = "jdbc:postgresql://postgres:5432/segmentasi"
 PROPS = {"user": "bigdata", "password": "bigdata",
          "driver": "org.postgresql.Driver", "batchsize": "10000"}
 
+# 6 fitur perilaku & belanja (sama dengan notebook Colab). Recency TIDAK masuk K-Means;
+# dipakai terpisah untuk profil dan analisis risiko tidak aktif.
 FEATS = ["view_count", "cart_count", "remove_count", "purchase_count",
-         "total_spend", "session_count", "days_since_last_event"]
-K, SEEDS, MAX_ITER, TOL = 4, [42, 1, 2, 3, 4, 5, 6, 7, 8, 9], 20, 0.01
-NAMA = ["Pembeli Bernilai Tinggi", "Pembeli Menengah", "Browser Aktif", "Pengunjung Kasual"]
+         "session_count", "total_spend"]
+K, SEEDS, MAX_ITER, TOL = 3, [42, 1, 2, 3, 4, 5, 6, 7, 8, 9], 50, 1e-4   # sama dengan model final Colab
 
 
 def to_pg(pdf, table):
@@ -32,16 +34,8 @@ seg = (spark.read.parquet(FEATURES)
 total = seg.count()
 print("Pelanggan:", f"{total:,}")
 
-# ---------- A. penamaan segmen (ranking: spend -> cart)
-kpi = seg.groupBy("cluster").agg(
-    F.count("*").alias("customers"),
-    F.avg("total_spend").alias("avg_spend"),
-    F.avg("cart_count").alias("avg_carts"),
-).toPandas()
-u = kpi.sort_values("avg_spend", ascending=False)
-peta = {int(u.iloc[0]["cluster"]): NAMA[0], int(u.iloc[1]["cluster"]): NAMA[1]}
-s2 = u.iloc[2:].sort_values("avg_carts", ascending=False)
-peta[int(s2.iloc[0]["cluster"])], peta[int(s2.iloc[1]["cluster"])] = NAMA[2], NAMA[3]
+# ---------- A. penamaan segmen berbasis data (lihat penamaan.py)
+peta = beri_nama(seg)
 rec = spark.createDataFrame([(c, n) for c, n in peta.items()], ["cluster", "segmen"])
 
 # ---------- B. revenue share + buyer rate + spending per buyer
@@ -199,7 +193,7 @@ s_b = sum(comb(x) for x in ct.groupby("c_alt")["count"].sum())
 exp = s_a * s_b / comb(n)
 ari_alt = (s_ij - exp) / ((s_a + s_b) / 2 - exp)
 sens = pd.DataFrame([
-    ("Model 1: 7 fitur (utama)", round(sil_all, 4), 1.0),
+    ("Model 1: 6 fitur (utama)", round(sil_all, 4), 1.0),
     ("Model 2: tanpa session_count", round(sil2, 4), round(float(ari_alt), 4)),
 ], columns=["model", "silhouette", "ari_vs_model_utama"])
 print("\n=== SENSITIVITAS FITUR ===")

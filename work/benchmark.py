@@ -14,8 +14,10 @@ BENCH = "hdfs://namenode:9000/data/processed/bench_events"
 BENCH_F = "hdfs://namenode:9000/data/processed/bench_features"
 JDBC = "jdbc:postgresql://postgres:5432/segmentasi"
 PROPS = {"user": "bigdata", "password": "bigdata", "driver": "org.postgresql.Driver"}
+# 6 fitur perilaku & belanja (sama dengan notebook Colab). Recency TIDAK masuk K-Means;
+# dipakai terpisah untuk profil dan analisis risiko tidak aktif.
 FEATS = ["view_count", "cart_count", "remove_count", "purchase_count",
-         "total_spend", "session_count", "days_since_last_event"]
+         "session_count", "total_spend"]
 
 sc = spark.sparkContext
 log = []
@@ -84,8 +86,8 @@ def step5():
 
 data = t("5. Transformasi log1p + StandardScaler", step5)
 model = t("6. Training K-Means (K=4)",
-          lambda: KMeans(k=4, seed=42, featuresCol="features", predictionCol="cluster",
-                         maxIter=20, tol=0.01).fit(data))
+          lambda: KMeans(k=3, seed=42, featuresCol="features", predictionCol="cluster",
+                         maxIter=50, tol=1e-4).fit(data))
 
 
 def step7():

@@ -16,15 +16,16 @@ spark.sparkContext.setLogLevel("WARN")
 FEATURES_PATH = "hdfs://namenode:9000/data/processed/customer_features"
 RESULT_PATH = "hdfs://namenode:9000/data/processed/customer_segments"
 
-# Fitur yang digunakan untuk mengelompokkan pelanggan
+# 6 fitur perilaku & belanja (sama dengan notebook Colab).
+# Recency (days_since_last_event) TIDAK masuk K-Means; tetap disimpan untuk
+# profil segmen dan analisis risiko tidak aktif.
 feature_cols = [
     "view_count",
     "cart_count",
     "remove_count",
     "purchase_count",
-    "total_spend",
     "session_count",
-    "days_since_last_event"
+    "total_spend"
 ]
 
 df = spark.read.parquet(FEATURES_PATH)
@@ -52,12 +53,13 @@ scaler = StandardScaler(
 )
 
 kmeans = KMeans(
-    k=4,
+    k=3,                  # K final: paling tinggi & stabil (banding_k4_k5.py)
     seed=42,
     featuresCol="features",
     predictionCol="cluster",
-    maxIter=20,
-    tol=0.01
+    maxIter=50,           # sama dengan model final Colab
+    tol=1e-4,
+    initMode="k-means||"
 )
 
 pipeline = Pipeline(stages=[assembler, scaler, kmeans])

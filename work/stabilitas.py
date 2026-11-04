@@ -8,9 +8,11 @@ spark = (SparkSession.builder.appName("stabilitas")
 spark.sparkContext.setLogLevel("WARN")
 
 FEATURES_PATH = "hdfs://namenode:9000/data/processed/customer_features"
+# 6 fitur perilaku & belanja (sama dengan notebook Colab). Recency TIDAK masuk K-Means;
+# dipakai terpisah untuk profil dan analisis risiko tidak aktif.
 FEATS = ["view_count", "cart_count", "remove_count", "purchase_count",
-         "total_spend", "session_count", "days_since_last_event"]
-K = 4
+         "session_count", "total_spend"]
+K = 3
 SEEDS = [42, 1, 2, 3, 4, 5]
 SETTINGS = {
     "longgar (maxIter=20, tol=0.01)": (20, 0.01),

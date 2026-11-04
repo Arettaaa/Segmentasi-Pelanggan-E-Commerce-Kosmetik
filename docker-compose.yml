@@ -73,16 +73,25 @@ services:
     restart: unless-stopped
 
   dashboard_web:
-    image: python:3.11-slim
+    build: ./dashboard_web
     container_name: dashboard_web
-    working_dir: /app
-    command: sh -c "pip install -q -r requirements.txt && python app.py"
+    environment:
+      PG_HOST: postgres
+      PG_PORT: "5432"
+      PG_DB: ${PG_DB:-segmentasi}
+      PG_USER: ${PG_USER:-bigdata}
+      PG_PASSWORD: ${PG_PASSWORD:-bigdata}
+      CACHE_TTL: "600"
+      DATA_PERIOD: "Okt 2019 – Feb 2020"
+      CURRENCY: "USD"
     volumes:
       - ./dashboard_web:/app
     ports:
       - "8502:8502"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   namenode:

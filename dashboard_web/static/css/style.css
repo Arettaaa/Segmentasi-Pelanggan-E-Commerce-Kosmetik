@@ -320,3 +320,4 @@ table.mx{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric
 .sc .scm span.val{font-weight:600;color:var(--ink)}
 .sc{cursor:default}
 @media(min-width:1100px){.insg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.mx tbody tr.pick td{font-weight:700;background:color-mix(in srgb,var(--accent) 8%,transparent)}

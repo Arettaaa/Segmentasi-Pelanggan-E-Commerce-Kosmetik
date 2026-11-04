@@ -67,7 +67,7 @@ const SRC = {
   brand: 'analisis_marketing.py', category: 'analisis_marketing.py', product: 'analisis_marketing.py',
   price: 'analisis_marketing.py', hour: 'analisis_marketing.py', day: 'analisis_marketing.py',
   churn: 'analisis_marketing.py', sim: 'analisis_marketing.py', assume: 'analisis_marketing.py',
-  ksel: 'validasi_kmeans.py', val: 'validasi_kmeans.py', purity: 'validasi_kmeans.py',
+  ksel: 'validasi_kmeans.py', val: 'validasi_kmeans.py', purity: 'validasi_kmeans.py', kcmp: 'banding_k4_k5.py',
   bench: 'benchmark.py', spec: 'benchmark.py', profile: 'pipeline.py',
 };
 
@@ -280,7 +280,9 @@ function insights() {
     f: `Dari pengguna yang melihat produk, <b>${pct(fm.v2c)}</b> menambahkan ke keranjang, tetapi hanya <b>${pct(fm.c2p)}</b> dari mereka yang membeli. <b>${pct(fm.leak)}</b> pengguna yang memakai keranjang tidak pernah menyelesaikan pembelian.`,
     m: 'Area yang perlu diperiksa adalah proses setelah keranjang: total harga, ongkir, langkah checkout, dan metode pembayaran. Ini hipotesis; penyebabnya perlu diuji dengan data sesi/checkout.'});
 
-  const vr = valueRows().sort((a, b) => b.spend_per_buyer - a.spend_per_buyer);
+  /* hanya bandingkan segmen pembeli (tingkat pembelian >= 50%); segmen pengunjung punya sedikit pembeli */
+  const buyerSegs = new Set(e.filter(r => num(r.buyer_rate) >= 50).map(r => r.segmen));
+  const vr = valueRows().filter(r => buyerSegs.has(r.segmen)).sort((a, b) => b.spend_per_buyer - a.spend_per_buyer);
   if (vr.length >= 2 && vr[1].spend_per_buyer > 0) {
     const [a, b] = vr, rs = ratio(a.spend_per_buyer, b.spend_per_buyer), ri = ratio(a.purchase_per_buyer, b.purchase_per_buyer), rp = ratio(a.ppi, b.ppi);
     it.push({i: 'gem', tone: 's6', h: `Nilai pembeli didorong ${ri >= rp ? 'frekuensi' : 'harga'}`, k: `${nf(rs, 1)}× pendapatan per pembeli`,
@@ -628,7 +630,7 @@ const PAGES = [
    const sk = g('Silhouette K-Means'), sb = g('Silhouette Bisecting'), ar = g('rata-rata'), rp = g('reproduksi');
    const lvl = (v, hi, md) => v == null ? '' : v >= hi ? 'tinggi' : v >= md ? 'sedang' : 'rendah';
    return [
-     {span: 3, i: 'git-branch', l: 'Jumlah cluster (K)', v: D.meta.k, s: 'dipilih via elbow + silhouette'},
+     {span: 3, i: 'git-branch', l: 'Jumlah cluster (K)', v: D.meta.k, s: (D.kcmp || []).length ? 'silhouette & stabilitas multi-seed' : 'dipilih via elbow + silhouette'},
      {span: 3, i: 'diamond', l: 'Silhouette K-Means', v: sk != null ? nf(sk, 3) : '—', s: sk != null ? `kualitas pemisahan <b>${lvl(sk, .7, .5)}</b> (rentang −1 s.d. 1)` : 'jalankan validasi_kmeans.py', c: cv('--ok')},
      {span: 3, i: 'git-compare', l: 'Silhouette Bisecting K-Means', v: sb != null ? nf(sb, 3) : '—', s: sk != null && sb != null ? `K-Means ${sk >= sb ? 'lebih tinggi' : 'lebih rendah'} ${nf(Math.abs(sk - sb), 3)}` : 'metode pembanding', c: cv('--s6')},
      {span: 3, i: 'waves', l: 'ARI antar seed', v: ar != null ? nf(ar, 2) : '—', s: ar != null ? `stabilitas <b>${lvl(ar, .8, .5)}</b>${rp != null ? ` · reproduksi ${nf(rp, 2)}` : ''}` : '', c: cv('--warn')},
@@ -651,6 +653,18 @@ const PAGES = [
        options: base({plugins: {tooltip: {callbacks: {title: x => `K = ${x[0].label}`, label: x => ` ${fm(x.raw)}`}}},
          scales: {x: {title: {display: true, text: 'Jumlah cluster (K)', font: {size: 11}}}, y: {ticks: {callback: v => fm(v)}}}})});
    }})),
+  {id: 'kcmp', t: 'Perbandingan K multi-seed', s: '5 seed × 3 sampel per K · baris tebal = K terpilih', span: 12, h: 200, kind: 'html', src: ['kcmp'],
+   note: 'Silhouette dihitung pada 15 kombinasi seed K-Means dan sampel 10%. Std kecil dan ARI tinggi berarti hasil tidak bergantung pada seed tertentu.',
+   cols: () => [{k: 'k', l: 'K', n: 1}, {k: 'silhouette_mean', l: 'Silhouette rata-rata', n: 1, bar: 1, f: v => nf(v, 3)},
+     {k: 'silhouette_std', l: 'Std', n: 1, f: v => nf(v, 3)}, {k: 'silhouette_min', l: 'Terburuk', n: 1, f: v => nf(v, 3)},
+     {k: 'silhouette_max', l: 'Terbaik', n: 1, f: v => nf(v, 3)}, {k: 'ari_mean', l: 'ARI antar seed', n: 1, bar: 1, bc: () => cv('--ok'), f: v => nf(v, 3)},
+     {k: 'min_cluster_pct', l: 'Cluster terkecil', n: 1, f: v => pct(v)}],
+   data() { return {cols: this.cols(), rows: D.kcmp}; },
+   draw(el, v) {
+     el.innerHTML = matrix(this.cols(), D.kcmp, {sort: v._sort, dir: v._dir});
+     el.querySelectorAll('tbody tr').forEach((tr, i) => { if (num(D.kcmp[i] && D.kcmp[i].k) === D.meta.k && !v._sort) tr.classList.add('pick'); });
+     bindMatrix(el, v);
+   }},
   {id: 'sildetail', t: 'Silhouette per segmen', s: 'Segmen vs semua segmen lain', span: 6, h: 250, kind: 'chart', src: ['sil'], filt: true,
    rows: () => (D.sil || []).filter(r => r.cakupan.includes('Keseluruhan') || segs().includes(r.cakupan.replace(' vs lainnya', ''))),
    data() { return {cols: [{k: 'cakupan', l: 'Cakupan'}, {k: 'silhouette', l: 'Silhouette', n: 1, bar: 1, f: v => nf(v, 4)}], rows: this.rows()}; },
@@ -749,11 +763,11 @@ const PAGES = [
      const sk = ((D.val || []).find(x => x.metrik.includes('Silhouette K-Means')) || {}).nilai;
      el.innerHTML = `<ol class="steps">
        <li><b>Unit analisis:</b> pengguna (user_id) dengan minimal satu event.</li>
-       <li><b>7 fitur:</b> jumlah view, cart, remove, purchase (item), total pendapatan, jumlah sesi, hari sejak aktivitas terakhir.</li>
+       <li><b>6 fitur perilaku & belanja:</b> jumlah view, cart, remove, purchase (item), jumlah sesi, dan total pendapatan. Recency (hari sejak aktivitas terakhir) sengaja tidak dimasukkan ke K-Means; dipakai terpisah untuk profil dan analisis risiko tidak aktif.</li>
        <li><b>Transformasi:</b> log1p untuk meredam skew, lalu StandardScaler (mean 0, std 1) agar fitur berskala besar tidak mendominasi jarak.</li>
-       <li><b>Model:</b> K-Means Spark MLlib, K = ${D.meta.k}, seed 42; K dipilih dari elbow WSSSE dan silhouette${sk != null ? ` (silhouette ${nf(sk, 3)})` : ''}.</li>
-       <li><b>Validasi:</b> stabilitas 10 seed (ARI, Jaccard), pembanding Bisecting K-Means, dan uji sensitivitas tanpa session_count.</li>
-       <li><b>Penamaan segmen:</b> dua cluster dengan rata-rata pendapatan tertinggi menjadi Pembeli Bernilai Tinggi dan Pembeli Menengah; dua sisanya diurutkan dari rata-rata keranjang menjadi Pengunjung Aktif dan Pengunjung Kasual.</li></ol>`;
+       <li><b>Model:</b> K-Means Spark MLlib (init k-means||, maxIter 50, tol 1e-4), K = ${D.meta.k}, seed 42${sk != null ? `, silhouette ${nf(sk, 3)}` : ''}. K dipilih dari silhouette rata-rata dan stabilitas (ARI) pada 5 seed × 3 sampel, bukan dari satu kali run; elbow WSSSE sebagai pendukung.</li>
+       <li><b>Validasi:</b> stabilitas 10 seed (ARI, Jaccard), pembanding Bisecting K-Means, uji sensitivitas tanpa session_count, dan perbandingan K=4 vs K=5 multi-seed (banding_k4_k5.py).</li>
+       <li><b>Penamaan segmen (otomatis, penamaan.py):</b> cluster dengan tingkat pembelian ≥ 50% menjadi kelompok Pembeli (bila lebih dari satu, diurutkan dari rata-rata pendapatan); cluster lainnya menjadi kelompok Pengunjung, diurutkan dari rata-rata aktivitas keranjang (Aktif → Kasual).</li></ol>`;
    }},
   {id: 'caveat', t: 'Batasan interpretasi', s: '', span: 6, kind: 'html', src: [], notools: true,
    draw(el) {

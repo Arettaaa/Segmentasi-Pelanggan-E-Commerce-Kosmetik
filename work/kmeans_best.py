@@ -12,13 +12,15 @@ FEATURES_PATH = "hdfs://namenode:9000/data/processed/customer_features"
 SEGMENTS_PATH = "hdfs://namenode:9000/data/processed/customer_segments"
 BEST_PATH = "hdfs://namenode:9000/data/processed/customer_segments_best"
 
+# 6 fitur perilaku & belanja (sama dengan notebook Colab). Recency TIDAK masuk K-Means;
+# dipakai terpisah untuk profil dan analisis risiko tidak aktif.
 FEATS = ["view_count", "cart_count", "remove_count", "purchase_count",
-         "total_spend", "session_count", "days_since_last_event"]
+         "session_count", "total_spend"]
 OUTPUT_COLS = ["user_id", "total_events", *FEATS[:3], "purchase_count", "total_spend",
                "session_count", "days_since_last_event", "cluster"]
 OUTPUT_COLS = ["user_id", "total_events", "view_count", "cart_count", "remove_count",
                "purchase_count", "total_spend", "session_count", "days_since_last_event", "cluster"]
-K, SEEDS, MAX_ITER, TOL = 4, [42, 1, 2, 3, 4, 5], 100, 1e-6
+K, SEEDS, MAX_ITER, TOL = 3, [42, 1, 2, 3, 4, 5], 100, 1e-6
 
 df = spark.read.parquet(FEATURES_PATH)
 for c in FEATS:

@@ -52,6 +52,7 @@ TABLES = {
     "sim": "SELECT * FROM conversion_simulation",
     "assume": "SELECT * FROM marketing_assumptions",
     "ksel": "SELECT * FROM k_selection ORDER BY k",
+    "kcmp": "SELECT * FROM k_compare ORDER BY k",
     "val": "SELECT * FROM model_validation",
     "sil": "SELECT * FROM silhouette_detail",
     "stab": "SELECT * FROM cluster_stability",
