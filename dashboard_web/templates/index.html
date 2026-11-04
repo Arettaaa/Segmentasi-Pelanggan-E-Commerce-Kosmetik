@@ -14,11 +14,11 @@
 
 <div id="app" class="hide">
   <div id="scrim"></div>
+
   <aside class="side">
     <div class="logo">
       <div class="mk"><i data-lucide="layers"></i></div>
       <div class="lt"><b>SegmentIQ</b><small>Cosmetics Analytics</small></div>
-      <button id="burger" aria-label="Lipat menu"><i data-lucide="chevrons-left"></i></button>
     </div>
     <nav>
       <a data-tab="bisnis" class="on" title="Hasil Segmentasi"><i data-lucide="users-round"></i><span>Hasil Segmentasi</span></a>
@@ -29,11 +29,12 @@
       <button id="reload" title="Muat ulang"><i data-lucide="refresh-cw"></i><span>Muat ulang</span></button>
     </div>
   </aside>
+
   <main>
     <header class="top">
       <div class="tleft">
-        <button id="burger-m" aria-label="Menu"><i data-lucide="menu"></i></button>
-        <div>
+        <button id="toggle" aria-label="Menu"><i data-lucide="panel-left"></i></button>
+        <div class="tt">
           <h1 id="h-title">Hasil Segmentasi</h1>
           <p id="h-sub">Profil, nilai ekonomi, dan strategi tiap segmen pelanggan</p>
         </div>
@@ -44,80 +45,80 @@
       </div>
     </header>
 
-    <!-- ══════════ TAB BISNIS ══════════ -->
-    <div id="tab-bisnis">
+    <!-- ══════ TAB BISNIS ══════ -->
+    <div id="tab-bisnis" class="pane">
       <section class="kpis" id="kpi-bisnis"></section>
 
-      <p class="sec"><i data-lucide="pie-chart"></i>01 — Customer Overview</p>
+      <p class="sec"><i data-lucide="pie-chart"></i><span>01 — Customer Overview</span></p>
       <section class="g-2a">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Customer share vs revenue share</h3><span>Segmen kecil dapat menyumbang sebagian besar nilai transaksi</span></div>
           <div class="cv h280"><canvas id="c-share"></canvas></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Komposisi pelanggan</h3><span>Proporsi jumlah pelanggan</span></div>
           <div class="cv h280"><canvas id="c-pie"></canvas></div>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="filter"></i>02 — Customer Conversion</p>
+      <p class="sec"><i data-lucide="filter"></i><span>02 — Customer Conversion</span></p>
       <section class="g-2b">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Funnel pelanggan unik</h3><span>Persentase pelanggan yang pernah melakukan tiap tahap</span></div>
           <div id="funnel" class="funnel"></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Konversi per segmen</h3><span>Persentase pelanggan yang pernah view, cart, dan purchase</span></div>
           <div class="cv h260"><canvas id="c-conv"></canvas></div>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="fingerprint"></i>03 — Customer Profile</p>
+      <p class="sec"><i data-lucide="fingerprint"></i><span>03 — Customer Profile</span></p>
       <section class="g-2a">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Indeks perilaku tiap segmen</h3><span>1,00 berarti sama dengan rata-rata seluruh pelanggan</span></div>
           <div id="heat" class="heat"></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Rentang harga produk dibeli</h3><span>Kuartil 25–75 dengan penanda median</span></div>
           <div id="pricebars" class="pricebars"></div>
-        </div>
+        </article>
       </section>
 
       <section class="card">
         <div class="ch">
-          <h3>Karakteristik tiap segmen</h3><span>Nilai asli hasil agregasi, bukan hasil standardisasi</span>
+          <div class="chl"><h3>Karakteristik tiap segmen</h3><span>Nilai asli hasil agregasi, bukan hasil standardisasi</span></div>
           <div class="tabs" id="tab-stat"><button class="on" data-t="mean">Rata-rata</button><button data-t="med">Median</button></div>
         </div>
         <div class="scroll"><table id="t-profile"></table></div>
       </section>
 
       <section class="g-2b">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Brand favorit</h3><span>Top 5 berdasarkan jumlah event purchase</span></div>
           <div class="cv h280"><canvas id="c-brand"></canvas></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Waktu aktif pelanggan</h3><span>Distribusi event per jam lokal (UTC+3)</span></div>
           <div class="cv h280"><canvas id="c-hour"></canvas></div>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="triangle-alert"></i>04 — Risiko &amp; Potensi</p>
+      <p class="sec"><i data-lucide="triangle-alert"></i><span>04 — Risiko &amp; Potensi</span></p>
       <section class="g-2b">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Pembeli berisiko churn</h3><span>Pernah membeli tetapi tidak aktif ≥ 60 hari</span></div>
           <div class="cv h240"><canvas id="c-churn"></canvas></div>
           <p class="note">Disebut berisiko churn, bukan churn aktual, karena dataset tidak memiliki label churn.</p>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Simulasi potensi konversi</h3><span>Skenario 1%, 3%, 5% non-pembeli menjadi pembeli</span></div>
           <div class="cv h240"><canvas id="c-sim"></canvas></div>
           <p class="note">Simulasi berbasis asumsi, bukan prediksi model.</p>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="target"></i>05 — Marketing Recommendations</p>
+      <p class="sec"><i data-lucide="target"></i><span>05 — Marketing Recommendations</span></p>
       <section class="g-4" id="cards-strategi"></section>
 
       <details class="card det">
@@ -129,72 +130,72 @@
       </details>
     </div>
 
-    <!-- ══════════ TAB MODEL ══════════ -->
-    <div id="tab-model" class="hide">
+    <!-- ══════ TAB MODEL ══════ -->
+    <div id="tab-model" class="pane hide">
       <section class="kpis" id="kpi-model"></section>
 
-      <p class="sec"><i data-lucide="git-branch"></i>01 — Pemilihan jumlah cluster</p>
+      <p class="sec"><i data-lucide="git-branch"></i><span>01 — Pemilihan jumlah cluster</span></p>
       <section class="g-2b">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Elbow (WSSSE)</h3><span>Garis putus menandai K yang dipilih</span></div>
           <div class="cv h240"><canvas id="c-elbow"></canvas></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Silhouette per nilai K</h3><span>Dihitung pada sampel 10% data</span></div>
           <div class="cv h240"><canvas id="c-silk"></canvas></div>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="scan-search"></i>02 — Kualitas pemisahan cluster</p>
+      <p class="sec"><i data-lucide="scan-search"></i><span>02 — Kualitas pemisahan cluster</span></p>
       <section class="g-2b">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Silhouette per cluster</h3><span>Tiap cluster dibandingkan terhadap gabungan cluster lain</span></div>
           <div class="cv h250"><canvas id="c-sildetail"></canvas></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Stabilitas tiap cluster</h3><span>Jaccard terhadap seed acuan, rentang min–maks</span></div>
           <div id="stab" class="stab"></div>
-        </div>
+        </article>
       </section>
 
       <section class="g-2b">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>WSSSE per seed</h3><span>Nilai berbeda menunjukkan adanya solusi lokal</span></div>
           <div class="cv h230"><canvas id="c-seed"></canvas></div>
           <p class="note">K-Means konvergen ke dua solusi lokal. Model final memakai seed dengan WSSSE terendah.</p>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Ringkasan validasi</h3><span>Metrik evaluasi model</span></div>
           <div class="scroll"><table id="t-val"></table></div>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="sliders-horizontal"></i>03 — Fitur</p>
+      <p class="sec"><i data-lucide="sliders-horizontal"></i><span>03 — Fitur</span></p>
       <section class="g-2a">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Korelasi antar fitur</h3><span>Setelah transformasi log1p dan standardisasi</span></div>
           <div id="corr" class="heat"></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Sensitivitas fitur</h3><span>Dampak menghapus session_count</span></div>
           <div class="scroll"><table id="t-sens"></table></div>
           <p class="note">Tiga pasangan fitur berkorelasi di atas 0,8: purchase_count dengan total_spend,
             view_count dengan session_count, serta cart_count dengan remove_count. Model tanpa
             session_count memberi silhouette lebih tinggi tetapi partisi cukup berbeda, sehingga model
             tujuh fitur dipertahankan agar profil segmen tetap lengkap.</p>
-        </div>
+        </article>
       </section>
 
-      <p class="sec"><i data-lucide="gauge"></i>04 — Performa pipeline</p>
+      <p class="sec"><i data-lucide="gauge"></i><span>04 — Performa pipeline</span></p>
       <section class="g-2a">
-        <div class="card">
+        <article class="card">
           <div class="ch"><h3>Waktu tiap tahap</h3><span id="bench-sub"></span></div>
           <div class="cv h280"><canvas id="c-bench"></canvas></div>
-        </div>
-        <div class="card">
+        </article>
+        <article class="card">
           <div class="ch"><h3>Spesifikasi lingkungan</h3><span>Konfigurasi Spark dan data</span></div>
           <div class="scroll"><table id="t-spec"></table></div>
-        </div>
+        </article>
       </section>
 
       <details class="card det">

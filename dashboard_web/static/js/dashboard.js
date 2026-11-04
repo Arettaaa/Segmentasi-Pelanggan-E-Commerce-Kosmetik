@@ -9,11 +9,11 @@ const SEGC=()=>[cv('--p1'),cv('--p3'),cv('--warn'),cv('--p4')];
 const colorOf=s=>{const i=D.kpi.order.indexOf(s);return SEGC()[i<0?3:i];};
 const FEATS=[['avg_views','View'],['avg_carts','Cart'],['avg_removes','Remove'],
  ['avg_purchases','Purchase'],['avg_sessions','Sesi'],['avg_spend','Nilai'],['avg_recency','Recency']];
-const STRAT=[
- ['Retensi','crown','VIP membership, reward pembelian, bundling premium, dan early access produk baru.'],
- ['Pertumbuhan','trending-up','Rekomendasi produk pelengkap, promo pembelian berikutnya, dan program repeat purchase.'],
- ['Konversi','shopping-cart','Retargeting produk yang dilihat, pengingat keranjang, ulasan pelanggan, dan penawaran terbatas.'],
- ['Akuisisi','user-plus','Welcome coupon, promo pembelian pertama, dan pengenalan produk terlaris.']];
+const STRAT={
+ 'Pembeli Bernilai Tinggi':['Retensi','crown','VIP membership, reward pembelian, bundling premium, dan early access produk baru.'],
+ 'Pembeli Menengah':['Pertumbuhan','trending-up','Rekomendasi produk pelengkap, promo pembelian berikutnya, dan program repeat purchase.'],
+ 'Browser Aktif':['Konversi','shopping-cart','Retargeting produk yang dilihat, pengingat keranjang, ulasan pelanggan, dan penawaran terbatas.'],
+ 'Pengunjung Kasual':['Akuisisi','user-plus','Welcome coupon, promo pembelian pertama, dan pengenalan produk terlaris.']};
 
 function opts(extra={}){
   Chart.defaults.font.family="'Plus Jakarta Sans',sans-serif";
@@ -28,14 +28,14 @@ function opts(extra={}){
 const legend=()=>({display:true,position:'bottom',labels:{boxWidth:8,boxHeight:8,usePointStyle:true,
   pointStyle:'circle',font:{size:11,weight:'600'},padding:14,color:cv('--muted')}});
 const catX=()=>({grid:{display:false},border:{display:false},
-  ticks:{font:{size:9.5,weight:'600'},maxRotation:16,autoSkip:false,
-    callback(v){const l=this.getLabelForValue(v);return l.length>18?l.slice(0,17)+'…':l;}}});
+  ticks:{font:{size:9.5,weight:'600'},maxRotation:18,autoSkip:false,
+    callback(v){const l=String(this.getLabelForValue(v));return l.length>16?l.slice(0,15)+'…':l;}}});
 
 function kpi(el,items){
   c(el).innerHTML=items.map(([ic,val,lab,bdg,col])=>`
    <div class="kpi"><div class="r"><div class="ic" style="background:${col}1f;color:${col}">
    <i data-lucide="${ic}"></i></div>
-   <div><div class="lab">${lab}</div><div class="val">${val}</div></div></div>
+   <div class="tx"><div class="lab">${lab}</div><div class="val">${val}</div></div></div>
    ${bdg?`<div class="bdg" style="background:${col}17;color:${col}">${bdg}</div>`:''}</div>`).join('');
   ico();
 }
@@ -46,7 +46,8 @@ function table(id,head,rows){
 }
 function heatGrid(el,rowLabels,colLabels,values,fmt=2,zmax=3){
   const g=c(el);
-  g.style.gridTemplateColumns=`126px repeat(${colLabels.length},minmax(0,1fr))`;
+  const w=window.innerWidth<600?92:126;
+  g.style.gridTemplateColumns=`${w}px repeat(${colLabels.length},minmax(0,1fr))`;
   let h='<div></div>'+colLabels.map(x=>`<div class="hh">${x}</div>`).join('');
   rowLabels.forEach((r,i)=>{
     h+=`<div class="hl">${r}</div>`;
@@ -60,14 +61,14 @@ function heatGrid(el,rowLabels,colLabels,values,fmt=2,zmax=3){
   g.innerHTML=h;
 }
 
-/* ══════════ TAB BISNIS ══════════ */
+/* ══ TAB BISNIS ══ */
 function drawBisnis(){
   const e=D.econ,P=D.profile,k=D.kpi,ord=k.order,hi=e[0];
   kpi('kpi-bisnis',[
     ['users-round',fm(k.total),'Total pelanggan',`${k.k} segmen terbentuk`,cv('--p1')],
     ['badge-check',fm(k.buyers),'Pernah membeli',`buyer rate ${(k.buyers/k.total*100).toFixed(1)}%`,cv('--ok')],
     ['wallet',fm(k.revenue),'Total nilai transaksi',`${fm(k.revenue/k.buyers,2)} per pembeli`,cv('--p3')],
-    ['trending-up',hi.revenue_share.toFixed(1)+'%',`Revenue ${hi.segmen.split(' ').slice(0,2).join(' ')}`,
+    ['trending-up',hi.revenue_share.toFixed(1)+'%','Revenue segmen teratas',
      `dari ${hi.pct_customers.toFixed(1)}% pelanggan`,cv('--warn')]]);
 
   ch.share=new Chart(c('c-share'),{type:'bar',
@@ -89,9 +90,9 @@ function drawBisnis(){
 
   const fu=D.funnel,mx=Math.max(...fu.map(r=>r.customers));
   c('funnel').innerHTML=fu.map((r,i)=>
-   `<div class="fs" style="width:${Math.max(r.customers/mx*100,22)}%;
+   `<div class="fs" style="width:${Math.max(r.customers/mx*100,40)}%;
      background:${[cv('--p4'),cv('--warn'),cv('--p1')][i]}">
-    <span>${r.tahap}</span><em>${fm(r.customers)} · ${r.pct_of_total.toFixed(1)}%</em></div>`).join('');
+    <b>${r.tahap}</b><em>${fm(r.customers)} · ${r.pct_of_total.toFixed(1)}%</em></div>`).join('');
 
   ch.conv=new Chart(c('c-conv'),{type:'bar',
     data:{labels:ord,datasets:[['pct_view','View',cv('--p4')],['pct_cart','Cart',cv('--warn')],
@@ -154,7 +155,8 @@ function drawBisnis(){
       scales:{x:catX(),y:{grid:{color:cv('--line')},border:{display:false},
         ticks:{callback:v=>fm(v/1000)+'rb'}}}})});
 
-  c('cards-strategi').innerHTML=ord.map((s,i)=>{const r=row(e,s),[f,icon,a]=STRAT[i];
+  c('cards-strategi').innerHTML=ord.map(s=>{const r=row(e,s);
+    const [f,icon,a]=STRAT[s]||['Segmen','users','—'];
     return `<div class="scard" style="--sc:${colorOf(s)}">
      <div class="sh"><div class="si"><i data-lucide="${icon}"></i></div><b>${s}</b></div>
      <div class="pills"><span class="pl hi">${f}</span>
@@ -182,9 +184,9 @@ function renderProfileTable(){
           fm(p.med_spend,2),fm(p.med_recency,1)];}));
 }
 
-/* ══════════ TAB MODEL ══════════ */
+/* ══ TAB MODEL ══ */
 function drawModel(){
-  const v=D.val,g=s=>{const r=v.find(x=>x.metrik.includes(s));return r?r.nilai:null;};
+  const v=D.val||[],g=s=>{const r=v.find(x=>x.metrik.includes(s));return r?r.nilai:null;};
   const sk=g('Silhouette K-Means'),sb=g('Silhouette Bisecting'),ar=g('rata-rata');
   kpi('kpi-model',[
     ['git-branch','4','Jumlah cluster','elbow + silhouette',cv('--p1')],
@@ -192,7 +194,7 @@ function drawModel(){
     ['git-compare',sb?sb.toFixed(3):'—','Silhouette Bisecting','metode pembanding',cv('--p3')],
     ['waves',ar?ar.toFixed(2):'—','ARI antar seed','stabilitas sedang',cv('--warn')]]);
 
-  const ks=D.ksel,kl=ks.map(r=>r.k),iK=kl.indexOf(4);
+  const ks=D.ksel||[],kl=ks.map(r=>r.k),iK=kl.indexOf(4);
   const vline={id:'vl',afterDraw(c2){
     if(iK<0)return;
     const x=c2.scales.x.getPixelForValue(iK),a=c2.chartArea,t=c2.ctx;
@@ -206,7 +208,7 @@ function drawModel(){
         pointRadius:5,pointBackgroundColor:cc,pointBorderColor:cv('--card'),pointBorderWidth:2,
         fill:true,backgroundColor:cc+'14'}]},options:opts()});});
 
-  const sd=D.sil;
+  const sd=D.sil||[];
   ch.sild=new Chart(c('c-sildetail'),{type:'bar',
     data:{labels:sd.map(r=>r.cakupan.replace(' vs lainnya','')),
       datasets:[{data:sd.map(r=>r.silhouette),borderRadius:7,maxBarThickness:24,
@@ -215,32 +217,38 @@ function drawModel(){
     options:opts({indexAxis:'y',scales:{x:{max:1,grid:{color:cv('--line')},border:{display:false}},
       y:{grid:{display:false},border:{display:false},ticks:{font:{size:10,weight:'600'}}}}})});
 
-  c('stab').innerHTML=D.stab.map(r=>
+  c('stab').innerHTML=(D.stab||[]).map(r=>
    `<div class="sb"><div class="sbl"><span>${r.segmen}</span><span>${r.jaccard_mean.toFixed(2)}</span></div>
     <div class="track"><div class="rng" style="left:${r.jaccard_min*100}%;
       width:${(r.jaccard_max-r.jaccard_min)*100}%"></div>
     <div class="dot" style="left:${r.jaccard_mean*100}%;background:${colorOf(r.segmen)}"></div></div></div>`).join('');
 
-  const sw=D.seed,mn=Math.min(...sw.map(r=>r.wssse)),mxw=Math.max(...sw.map(r=>r.wssse));
-  ch.seed=new Chart(c('c-seed'),{type:'bar',
-    data:{labels:sw.map(r=>'s'+r.seed),datasets:[{data:sw.map(r=>r.wssse),borderRadius:6,
-      maxBarThickness:26,backgroundColor:sw.map(r=>r.wssse<=mn*1.001?cv('--p1'):cv('--p4'))}]},
-    options:opts({plugins:{tooltip:{callbacks:{label:x=>` WSSSE ${fm(x.raw,0)}`}}},
-      scales:{x:{grid:{display:false},border:{display:false}},
-        y:{min:mn*.97,max:mxw*1.01,grid:{color:cv('--line')},border:{display:false},
-          ticks:{callback:x=>(x/1e6).toFixed(2)+'M'}}}})});
+  const sw=D.seed||[];
+  if(sw.length){
+    const mn=Math.min(...sw.map(r=>r.wssse)),mxw=Math.max(...sw.map(r=>r.wssse));
+    ch.seed=new Chart(c('c-seed'),{type:'bar',
+      data:{labels:sw.map(r=>'s'+r.seed),datasets:[{data:sw.map(r=>r.wssse),borderRadius:6,
+        maxBarThickness:26,backgroundColor:sw.map(r=>r.wssse<=mn*1.001?cv('--p1'):cv('--p4'))}]},
+      options:opts({plugins:{tooltip:{callbacks:{label:x=>` WSSSE ${fm(x.raw,0)}`}}},
+        scales:{x:{grid:{display:false},border:{display:false}},
+          y:{min:mn*.97,max:mxw*1.01,grid:{color:cv('--line')},border:{display:false},
+            ticks:{callback:x=>(x/1e6).toFixed(2)+'M'}}}})});
+  }
 
   table('t-val',['Metrik','Nilai'],v.map(r=>[r.metrik,r.nilai.toFixed(3)]));
 
-  const co=D.corr,keys=Object.keys(co[0]).filter(x=>x!=='fitur');
-  heatGrid('corr',co.map(r=>r.fitur.replace(/_/g,' ')),
-    keys.map(x=>x.replace(/_count|_spend|days_since_last_event/g,m=>m==='days_since_last_event'?'recency':'')),
-    co.map(r=>keys.map(x=>({v:r[x],t:r[x]*3}))),2,3);
+  const co=D.corr||[];
+  if(co.length){
+    const keys=Object.keys(co[0]).filter(x=>x!=='fitur');
+    heatGrid('corr',co.map(r=>r.fitur.replace(/_/g,' ')),
+      keys.map(x=>x==='days_since_last_event'?'recency':x.replace(/_count|_spend/g,'')),
+      co.map(r=>keys.map(x=>({v:r[x],t:r[x]*3}))),2,3);
+  }
 
   table('t-sens',['Model','Silhouette','ARI vs utama'],
-    D.sens.map(r=>[r.model,r.silhouette.toFixed(4),r.ari_vs_model_utama.toFixed(4)]));
+    (D.sens||[]).map(r=>[r.model,r.silhouette.toFixed(4),r.ari_vs_model_utama.toFixed(4)]));
 
-  if(D.bench.length){
+  if((D.bench||[]).length){
     const b=D.bench,tt=b.reduce((a,r)=>a+r.detik,0);
     c('bench-sub').textContent=`Total ${tt.toFixed(0)} detik`;
     ch.bench=new Chart(c('c-bench'),{type:'bar',
@@ -249,7 +257,7 @@ function drawModel(){
       options:opts({indexAxis:'y',plugins:{tooltip:{callbacks:{label:x=>` ${x.raw.toFixed(1)} detik`}}},
         scales:{x:{grid:{color:cv('--line')},border:{display:false}},
           y:{grid:{display:false},border:{display:false},ticks:{font:{size:9.5,weight:'600'}}}}})});
-    table('t-spec',['Parameter','Nilai'],D.spec.map(r=>[r.parameter,r.nilai]));
+    table('t-spec',['Parameter','Nilai'],(D.spec||[]).map(r=>[r.parameter,r.nilai]));
   }else{
     c('bench-sub').textContent='Jalankan benchmark.py terlebih dahulu';
   }
@@ -276,7 +284,7 @@ async function load(){
      <code>${e.message}</code>`;}
 }
 
-/* ── interaksi ── */
+/* ══ interaksi ══ */
 document.querySelectorAll('nav a').forEach(a=>a.onclick=()=>{
   document.querySelectorAll('nav a').forEach(x=>x.classList.remove('on'));
   a.classList.add('on');
@@ -287,23 +295,26 @@ document.querySelectorAll('nav a').forEach(a=>a.onclick=()=>{
   c('h-sub').textContent=b?'Profil, nilai ekonomi, dan strategi tiap segmen pelanggan'
     :'Validitas, stabilitas, dan performa pipeline K-Means';
   document.body.classList.remove('open');
+  setTimeout(()=>Object.values(ch).forEach(x=>x&&x.resize()),60);
   window.scrollTo({top:0,behavior:'smooth'});
 });
 c('tab-stat').onclick=ev=>{
   if(ev.target.tagName!=='BUTTON')return;
   document.querySelectorAll('#tab-stat button').forEach(b=>b.classList.remove('on'));
   ev.target.classList.add('on');STAT=ev.target.dataset.t;renderProfileTable();};
-const toggleSide=()=>{
-  if(window.innerWidth<=1024)document.body.classList.toggle('open');
+c('toggle').onclick=()=>{
+  if(window.innerWidth<=900)document.body.classList.toggle('open');
   else document.body.classList.toggle('mini');
-  setTimeout(()=>Object.values(ch).forEach(x=>x&&x.resize()),260);};
-c('burger').onclick=toggleSide;
-c('burger-m').onclick=toggleSide;
+  setTimeout(()=>Object.values(ch).forEach(x=>x&&x.resize()),280);};
 c('scrim').onclick=()=>document.body.classList.remove('open');
 c('theme').onclick=()=>{
   const d=document.body.classList.toggle('dark');
   c('theme').innerHTML=`<i data-lucide="${d?'sun':'moon'}"></i><span>${d?'Mode terang':'Mode gelap'}</span>`;
   ico();if(D)redraw();};
 c('reload').onclick=load;
-window.addEventListener('resize',()=>{if(window.innerWidth>1024)document.body.classList.remove('open');});
-ico();load();
+let rt;
+window.addEventListener('resize',()=>{
+  if(window.innerWidth>900)document.body.classList.remove('open');
+  clearTimeout(rt);rt=setTimeout(()=>{if(D)redraw();},250);});
+ico();
+load();
