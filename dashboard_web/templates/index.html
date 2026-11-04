@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SegmentIQ — Customer Segmentation</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div id="loader"><div class="spin"></div><p>Memuat data dari PostgreSQL…</p></div>
+<div id="fatal" class="hide"></div>
+
+<div id="app" class="hide">
+  <div id="scrim"></div>
+  <aside class="side">
+    <div class="logo">
+      <div class="mk"><i data-lucide="layers"></i></div>
+      <div class="lt"><b>SegmentIQ</b><small>Cosmetics Analytics</small></div>
+      <button id="burger" aria-label="Lipat menu"><i data-lucide="chevrons-left"></i></button>
+    </div>
+    <nav>
+      <a data-tab="bisnis" class="on" title="Hasil Segmentasi"><i data-lucide="users-round"></i><span>Hasil Segmentasi</span></a>
+      <a data-tab="model" title="Evaluasi Model"><i data-lucide="activity"></i><span>Evaluasi Model</span></a>
+    </nav>
+    <div class="sfoot">
+      <button id="theme" title="Ganti tema"><i data-lucide="moon"></i><span>Mode gelap</span></button>
+      <button id="reload" title="Muat ulang"><i data-lucide="refresh-cw"></i><span>Muat ulang</span></button>
+    </div>
+  </aside>
+  <main>
+    <header class="top">
+      <div class="tleft">
+        <button id="burger-m" aria-label="Menu"><i data-lucide="menu"></i></button>
+        <div>
+          <h1 id="h-title">Hasil Segmentasi</h1>
+          <p id="h-sub">Profil, nilai ekonomi, dan strategi tiap segmen pelanggan</p>
+        </div>
+      </div>
+      <div class="trow">
+        <span class="period"><i data-lucide="calendar-range"></i>Okt 2019 – Feb 2020</span>
+        <span class="period alt" id="h-k"></span>
+      </div>
+    </header>
+
+    <!-- ══════════ TAB BISNIS ══════════ -->
+    <div id="tab-bisnis">
+      <section class="kpis" id="kpi-bisnis"></section>
+
+      <p class="sec"><i data-lucide="pie-chart"></i>01 — Customer Overview</p>
+      <section class="g-2a">
+        <div class="card">
+          <div class="ch"><h3>Customer share vs revenue share</h3><span>Segmen kecil dapat menyumbang sebagian besar nilai transaksi</span></div>
+          <div class="cv h280"><canvas id="c-share"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Komposisi pelanggan</h3><span>Proporsi jumlah pelanggan</span></div>
+          <div class="cv h280"><canvas id="c-pie"></canvas></div>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="filter"></i>02 — Customer Conversion</p>
+      <section class="g-2b">
+        <div class="card">
+          <div class="ch"><h3>Funnel pelanggan unik</h3><span>Persentase pelanggan yang pernah melakukan tiap tahap</span></div>
+          <div id="funnel" class="funnel"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Konversi per segmen</h3><span>Persentase pelanggan yang pernah view, cart, dan purchase</span></div>
+          <div class="cv h260"><canvas id="c-conv"></canvas></div>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="fingerprint"></i>03 — Customer Profile</p>
+      <section class="g-2a">
+        <div class="card">
+          <div class="ch"><h3>Indeks perilaku tiap segmen</h3><span>1,00 berarti sama dengan rata-rata seluruh pelanggan</span></div>
+          <div id="heat" class="heat"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Rentang harga produk dibeli</h3><span>Kuartil 25–75 dengan penanda median</span></div>
+          <div id="pricebars" class="pricebars"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="ch">
+          <h3>Karakteristik tiap segmen</h3><span>Nilai asli hasil agregasi, bukan hasil standardisasi</span>
+          <div class="tabs" id="tab-stat"><button class="on" data-t="mean">Rata-rata</button><button data-t="med">Median</button></div>
+        </div>
+        <div class="scroll"><table id="t-profile"></table></div>
+      </section>
+
+      <section class="g-2b">
+        <div class="card">
+          <div class="ch"><h3>Brand favorit</h3><span>Top 5 berdasarkan jumlah event purchase</span></div>
+          <div class="cv h280"><canvas id="c-brand"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Waktu aktif pelanggan</h3><span>Distribusi event per jam lokal (UTC+3)</span></div>
+          <div class="cv h280"><canvas id="c-hour"></canvas></div>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="triangle-alert"></i>04 — Risiko &amp; Potensi</p>
+      <section class="g-2b">
+        <div class="card">
+          <div class="ch"><h3>Pembeli berisiko churn</h3><span>Pernah membeli tetapi tidak aktif ≥ 60 hari</span></div>
+          <div class="cv h240"><canvas id="c-churn"></canvas></div>
+          <p class="note">Disebut berisiko churn, bukan churn aktual, karena dataset tidak memiliki label churn.</p>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Simulasi potensi konversi</h3><span>Skenario 1%, 3%, 5% non-pembeli menjadi pembeli</span></div>
+          <div class="cv h240"><canvas id="c-sim"></canvas></div>
+          <p class="note">Simulasi berbasis asumsi, bukan prediksi model.</p>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="target"></i>05 — Marketing Recommendations</p>
+      <section class="g-4" id="cards-strategi"></section>
+
+      <details class="card det">
+        <summary>Asumsi dan catatan analisis</summary>
+        <div class="scroll"><table id="t-assume"></table></div>
+        <p class="note">Nama segmen merupakan interpretasi atas profil cluster, bukan keluaran model.
+          Event purchase tidak sama dengan jumlah pesanan unik. Kolom category_code sebagian besar
+          kosong pada dataset sehingga analisis kategori tidak disajikan.</p>
+      </details>
+    </div>
+
+    <!-- ══════════ TAB MODEL ══════════ -->
+    <div id="tab-model" class="hide">
+      <section class="kpis" id="kpi-model"></section>
+
+      <p class="sec"><i data-lucide="git-branch"></i>01 — Pemilihan jumlah cluster</p>
+      <section class="g-2b">
+        <div class="card">
+          <div class="ch"><h3>Elbow (WSSSE)</h3><span>Garis putus menandai K yang dipilih</span></div>
+          <div class="cv h240"><canvas id="c-elbow"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Silhouette per nilai K</h3><span>Dihitung pada sampel 10% data</span></div>
+          <div class="cv h240"><canvas id="c-silk"></canvas></div>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="scan-search"></i>02 — Kualitas pemisahan cluster</p>
+      <section class="g-2b">
+        <div class="card">
+          <div class="ch"><h3>Silhouette per cluster</h3><span>Tiap cluster dibandingkan terhadap gabungan cluster lain</span></div>
+          <div class="cv h250"><canvas id="c-sildetail"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Stabilitas tiap cluster</h3><span>Jaccard terhadap seed acuan, rentang min–maks</span></div>
+          <div id="stab" class="stab"></div>
+        </div>
+      </section>
+
+      <section class="g-2b">
+        <div class="card">
+          <div class="ch"><h3>WSSSE per seed</h3><span>Nilai berbeda menunjukkan adanya solusi lokal</span></div>
+          <div class="cv h230"><canvas id="c-seed"></canvas></div>
+          <p class="note">K-Means konvergen ke dua solusi lokal. Model final memakai seed dengan WSSSE terendah.</p>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Ringkasan validasi</h3><span>Metrik evaluasi model</span></div>
+          <div class="scroll"><table id="t-val"></table></div>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="sliders-horizontal"></i>03 — Fitur</p>
+      <section class="g-2a">
+        <div class="card">
+          <div class="ch"><h3>Korelasi antar fitur</h3><span>Setelah transformasi log1p dan standardisasi</span></div>
+          <div id="corr" class="heat"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Sensitivitas fitur</h3><span>Dampak menghapus session_count</span></div>
+          <div class="scroll"><table id="t-sens"></table></div>
+          <p class="note">Tiga pasangan fitur berkorelasi di atas 0,8: purchase_count dengan total_spend,
+            view_count dengan session_count, serta cart_count dengan remove_count. Model tanpa
+            session_count memberi silhouette lebih tinggi tetapi partisi cukup berbeda, sehingga model
+            tujuh fitur dipertahankan agar profil segmen tetap lengkap.</p>
+        </div>
+      </section>
+
+      <p class="sec"><i data-lucide="gauge"></i>04 — Performa pipeline</p>
+      <section class="g-2a">
+        <div class="card">
+          <div class="ch"><h3>Waktu tiap tahap</h3><span id="bench-sub"></span></div>
+          <div class="cv h280"><canvas id="c-bench"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Spesifikasi lingkungan</h3><span>Konfigurasi Spark dan data</span></div>
+          <div class="scroll"><table id="t-spec"></table></div>
+        </div>
+      </section>
+
+      <details class="card det">
+        <summary>Catatan evaluasi</summary>
+        <p class="note">Silhouette dihitung dengan squared Euclidean distance (default Spark
+          ClusteringEvaluator) pada sampel 10% data, dengan pengaturan sama untuk K-Means dan
+          Bisecting K-Means. Nilai silhouette bukan ukuran akurasi klasifikasi.<br><br>
+          Buyer rate per segmen merupakan profil deskriptif, bukan ukuran kebenaran model, karena
+          purchase_count termasuk fitur input clustering.<br><br>
+          Ditemukan 16 pelanggan dengan total_spend negatif akibat price negatif pada data mentah;
+          nilai dipotong ke nol sebelum transformasi log1p.<br><br>
+          Keterbatasan: data historis Okt 2019 – Feb 2020, segmentasi memakai agregasi seluruh periode,
+          tidak ada label segmen aktual sebagai ground truth, dan K-Means sensitif terhadap inisialisasi centroid.</p>
+      </details>
+    </div>
+
+    <footer>Dataset: eCommerce Events History in Cosmetics Shop (Kaggle) · Pipeline batch processing pada Docker</footer>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
