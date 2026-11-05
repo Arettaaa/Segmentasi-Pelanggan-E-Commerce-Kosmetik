@@ -10,7 +10,9 @@ spark = (
 
 spark.sparkContext.setLogLevel("WARN")
 
-SOURCE = "hdfs://namenode:9000/data/processed/customer_segments_best"
+# Harus sama dengan model yang dipakai analisis_lanjutan.py / analisis_marketing.py
+# (hasil kmeans_pipeline.py). Jangan pakai customer_segments_best.
+SOURCE = "hdfs://namenode:9000/data/processed/customer_segments"
 
 JDBC_URL = "jdbc:postgresql://postgres:5432/segmentasi"
 CONNECTION = {

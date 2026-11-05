@@ -116,6 +116,13 @@ def build_payload():
             r["cluster"] = int(r["cluster"])
             r["segmen"] = peta.get(r["cluster"], f"Cluster {r['cluster']}")
 
+    # pengaman: jumlah pengguna per cluster di customer_segments harus sama dengan segment_economics
+    econ_n = {int(r["cluster"]): int(r["customers"]) for r in out["econ"]}
+    prof_n = {r["cluster"]: int(r["customers"]) for r in out["profile"]}
+    mismatch = sorted(c for c in set(econ_n) | set(prof_n) if econ_n.get(c) != prof_n.get(c))
+    if mismatch:
+        log.warning("customer_segments tidak sinkron dengan segment_economics (cluster %s)", mismatch)
+
     k_final = next((r["nilai"] for r in out["val"] if r["metrik"].startswith("K final")), None)
     out["meta"] = dict(
         period=DATA_PERIOD,
@@ -126,6 +133,7 @@ def build_payload():
         cache_ttl=CACHE_TTL,
         query_ms=round((time.perf_counter() - t0) * 1000),
         missing=missing,
+        mismatch=mismatch,
     )
     if missing:
         log.warning("Tabel belum tersedia: %s", ", ".join(missing))

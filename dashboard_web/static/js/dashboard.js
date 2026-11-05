@@ -336,7 +336,7 @@ const kpiCards = list => list.map(k => `
     <div class="kl"><i data-lucide="${k.i}"></i><span>${esc(k.l)}</span>${info(k.d)}</div>
     <div class="kv" title="${esc(k.tip || '')}">${k.v}</div><div class="ks">${k.s || '&nbsp;'}</div></div>`).join('');
 
-const PAGES = [
+const PAGES_ALL = [
 /* ================= 1. RINGKASAN EKSEKUTIF ================= */
 {id: 'ringkasan', t: 'Ringkasan Eksekutif', i: 'layout-dashboard', sub: 'Apa yang terjadi, di mana nilai terkonsentrasi, dan di mana peluangnya',
  kpi() {
@@ -433,6 +433,50 @@ const PAGES = [
      tot.buyer_rate = ratio(tot.buyers, tot.customers) * 100; tot.spend_per_buyer = ratio(tot.segment_revenue, tot.buyers);
      tot.purchase_per_buyer = ratio(sum(e, r => r.purchase_per_buyer * r.buyers), tot.buyers);
      el.innerHTML = matrix(this.cols(), e, {sort: v._sort, dir: v._dir, click: 1, total: tot}); bindMatrix(el, v);
+   }},
+ ]},
+
+/* ================= 2. JAWABAN PERTANYAAN ANALITIK ================= */
+{id: 'jawaban', t: 'Jawaban Analitik', i: 'message-circle-question', sub: 'Tiga pertanyaan analitik proyek, dijawab dengan data dan halaman pendukungnya',
+ vis: [
+  {id: 'q1', t: 'Q1. Bagaimana karakteristik perilaku aktivitas dan transaksi pelanggan?', s: 'Rata-rata per pengguna, 6 fitur yang dipakai K-Means', span: 12, kind: 'html', src: ['profile'], notools: true,
+   cols: () => [{k: 'segmen', l: 'Segmen', seg: 1}, {k: 'customers', l: 'Pengguna', n: 1, f: v => nf(v)},
+     {k: 'avg_views', l: 'View', n: 1, f: v => nf(v, 1)}, {k: 'avg_carts', l: 'Cart', n: 1, f: v => nf(v, 2)},
+     {k: 'avg_removes', l: 'Remove', n: 1, f: v => nf(v, 2)}, {k: 'avg_purchases', l: 'Item dibeli', n: 1, f: v => nf(v, 2)},
+     {k: 'avg_sessions', l: 'Sesi', n: 1, f: v => nf(v, 1)}, {k: 'avg_spend', l: 'Belanja', n: 1, f: v => money(v)}],
+   draw(el) {
+     const rows = ORDER().map(s => by(D.profile, s)).filter(r => r.segmen);
+     const U = sum(rows, 'customers'), tot = sum(D.econ, 'buyers');
+     el.innerHTML = `<div class="doc"><p><b>Jawaban:</b> perilaku pelanggan sangat timpang. Sebagian besar pengguna (${pct(ratio(Math.max(...rows.map(r => r.customers)), U) * 100)} di segmen terbesar) hanya melihat produk, sedangkan sedikit pengguna berbelanja berulang. Total ${nf(tot)} pembeli dari ${nf(U)} pengguna (${pct(ratio(tot, U) * 100)}).</p></div>
+       <div class="wrap">${matrix(this.cols(), rows)}</div>
+       <p class="note" style="margin-top:8px">Detail per segmen (median, brand, kategori, jam aktif) ada di tab Detail Segmen. Fitur belanja = jumlah item pada event purchase, bukan jumlah pesanan.</p>`;
+   }},
+  {id: 'q2', t: 'Q2. Berapa jumlah cluster (K) yang sesuai?', s: 'Dipilih dari silhouette dan stabilitas multi-seed, bukan satu kali run', span: 12, kind: 'html', src: ['kcmp'], notools: true,
+   draw(el) {
+     const K = D.meta.k, kc = D.kcmp || [], cur = kc.find(r => num(r.k) === K), oth = kc.filter(r => num(r.k) !== K);
+     const best = oth.length ? oth.sort((a, b) => num(b.silhouette_mean) - num(a.silhouette_mean))[0] : null;
+     el.innerHTML = `<div class="doc"><p><b>Jawaban: K = ${K}.</b> ${cur ? `Silhouette rata-rata <b>${nf(cur.silhouette_mean, 3)}</b> (±${nf(cur.silhouette_std, 3)}) dan ARI antar seed <b>${nf(cur.ari_mean, 3)}</b>. ` : ''}${cur && best ? `Dibanding K=${best.k} (silhouette ${nf(best.silhouette_mean, 3)}, ARI ${nf(best.ari_mean, 3)}), K=${K} ${num(cur.ari_mean) > num(best.ari_mean) ? 'lebih stabil' : 'setara'} di berbagai seed dan sampel. ` : ''}Segmen tetap bermakna secara bisnis: Pembeli, Pengunjung Aktif, dan Pengunjung Kasual.</p>
+       <div class="callout"><i data-lucide="info"></i><div>Silhouette tertinggi saja tidak menjadi satu-satunya dasar. K lebih besar dapat sedikit lebih tinggi pada satu seed, tetapi hasilnya berubah-ubah antar seed. Rinciannya ada di bawah.</div></div></div>`;
+   }},
+  {id: 'q3', t: 'Q3. Apa karakteristik tiap cluster dan perbedaannya?', s: 'Karakteristik, kontribusi pendapatan, dan tindakan yang disarankan', span: 12, kind: 'html', src: ['econ', 'profile'], notools: true,
+   draw(el) {
+     const recs = recommendations();
+     el.innerHTML = `<div class="road" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">${recs.map(o => {
+       const r = o.r, p = by(D.profile, r.segmen);
+       return `<div class="rs on"><div class="rh"><i data-lucide="${o.icon}"></i><b style="color:${colorOf(r.segmen)}">${esc(r.segmen)}</b><span>${o.prio}</span></div>
+         <p><b>${nf(r.customers)}</b> pengguna (${pct(r.customers / sum(D.econ, 'customers') * 100)}), <b>${pct(r.revenue_share)}</b> pendapatan. Tingkat pembelian ${pct(r.buyer_rate)}.</p>
+         <p>Rata-rata ${nf(p.avg_views, 1)} view, ${nf(p.avg_carts, 2)} cart, ${nf(p.avg_purchases, 2)} item dibeli, ${nf(p.avg_sessions, 1)} sesi.</p>
+         <p><b>Tujuan: ${o.goal}.</b> ${esc(o.act)}</p></div>`;
+     }).join('')}</div>`;
+   }},
+  {id: 'out', t: 'Target hasil analisis', s: 'Sesuai rancangan proyek (Worksheet 3)', span: 12, kind: 'html', src: ['econ'], notools: true,
+   draw(el) {
+     const n = sum(D.econ, 'customers');
+     const rows = [['Label cluster tiap pelanggan', `Tersedia untuk ${nf(n)} pengguna (tabel customer_segments)`, 'Profil & Nilai Segmen'],
+       ['Jumlah cluster optimal (K)', `K = ${D.meta.k}`, 'Evaluasi Model'],
+       ['Profil karakteristik tiap cluster', `${ORDER().length} segmen: ${ORDER().map(esc).join(', ')}`, 'Profil & Nilai Segmen'],
+       ['Rekomendasi strategi bisnis', 'Konversi, retensi, dan akuisisi per segmen, dengan simulasi peluang', 'Risiko & Peluang']];
+     el.innerHTML = `<div class="wrap">${matrix([{k: 'a', l: 'Target'}, {k: 'b', l: 'Hasil'}, {k: 'c', l: 'Lihat di'}], rows.map(([a, b, c]) => ({a, b, c})))}</div>`;
    }},
  ]},
 
@@ -791,9 +835,24 @@ const PAGES = [
  ]},
 ];
 
-/* =====================================================================
-   RENDER
-   ===================================================================== */
+const _P = Object.fromEntries(PAGES_ALL.map(p => [p.id, p]));
+const _pick = (id, ids) => ids.map(k => _P[id].vis.find(v => v.id === k)).filter(Boolean);
+const PAGES = [
+  {id: 'ringkasan', t: 'Ringkasan', i: 'layout-dashboard',
+   sub: 'Q1 · Bagaimana perilaku pelanggan? · Q3 · Apa karakteristik tiap segmen?',
+   kpi: _P.ringkasan.kpi,
+   vis: [..._pick('jawaban', ['q1']), ..._pick('ringkasan', ['insight', 'pareto', 'pie', 'funnel', 'conv']), ..._pick('jawaban', ['q3'])]},
+  {id: 'segmen', t: 'Detail Segmen', i: 'fingerprint',
+   sub: 'Perilaku, nilai, produk, waktu aktif, risiko, dan peluang tiap segmen',
+   vis: [..._pick('profil', ['heat', 'price', 'value', 'profile', 'brand', 'category', 'product']),
+         ..._pick('aktivitas', ['hour', 'day']), ..._pick('risiko', ['churn', 'react', 'whatif', 'assume'])]},
+  {id: 'model', t: 'Model (K)', i: 'activity',
+   sub: 'Q2 · Berapa jumlah cluster yang sesuai, dan apakah hasilnya valid?',
+   kpi: _P.model.kpi,
+   vis: [..._pick('jawaban', ['q2']), ..._pick('model', ['elbow', 'silk', 'kcmp', 'sildetail', 'stab']),
+         ..._pick('pipeline', ['bench', 'spec'])]},
+];
+
 const page = () => PAGES.find(p => p.id === PAGE) || PAGES[0];
 const missing = v => (v.src || []).filter(k => !(D[k] && D[k].length));
 
@@ -1005,6 +1064,14 @@ async function load(force) {
     renderSlicer(); renderPage();
     if (force) toast('Data dimuat ulang dari PostgreSQL');
     if (m.missing && m.missing.length) toast(`Tabel belum tersedia: ${m.missing.join(', ')}`);
+    $('syncwarn') && $('syncwarn').remove();
+    if (m.mismatch && m.mismatch.length) {
+      const w = document.createElement('div'); w.id = 'syncwarn'; w.className = 'syncwarn';
+      w.innerHTML = `<i data-lucide="triangle-alert"></i><div><b>Data tidak sinkron.</b> Jumlah pengguna per cluster di <code>customer_segments</code> berbeda dengan <code>segment_economics</code>
+        (cluster ${m.mismatch.join(', ')}), sehingga label segmen pada profil bisa salah. Jalankan ulang berurutan:
+        <code>kmeans_pipeline.py → export_postgres.py → analisis_lanjutan.py → analisis_marketing.py</code>, lalu klik Muat ulang.</div>`;
+      $('canvas').prepend(w); ico();
+    }
   } catch (e) {
     $('loader').classList.add('hide');
     if (D) toast('Gagal memuat ulang: ' + e.message);

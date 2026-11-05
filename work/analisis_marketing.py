@@ -4,7 +4,8 @@ from penamaan import beri_nama
 
 spark = (SparkSession.builder.appName("analisis_marketing")
          .config("spark.sql.shuffle.partitions", "8")
-         .config("spark.sql.adaptive.enabled", "true").getOrCreate())
+         .config("spark.sql.adaptive.enabled", "true")
+         .config("spark.sql.autoBroadcastJoinThreshold", "-1").getOrCreate())   # cegah error memori saat join besar
 spark.sparkContext.setLogLevel("WARN")
 
 EVENTS = "hdfs://namenode:9000/data/processed/events_parquet"
